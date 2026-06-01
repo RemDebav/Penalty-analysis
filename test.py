@@ -53,3 +53,28 @@ axes[1].set_ylabel('Nombre de tirs')
 # Ajuste automatiquement l'espacement pour éviter que les titres se chevauchent
 plt.tight_layout()
 plt.show()
+
+
+fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+# Droitiers
+goals = df_droitier[df_droitier['Goal'] == 1].groupby('Area').size()
+
+axes[1].pie(
+    goals,
+    labels=['Left', 'Middle', 'Right'],
+    autopct='%1.1f%%'
+)
+axes[0].set_title('Droitiers', fontweight='bold')
+
+# Gauchers
+goals = df_gaucher[df_gaucher['Goal'] == 1].groupby('Area').size()
+
+axes[0].pie(
+    goals,
+    labels=['Left', 'Middle', 'Right'],
+    autopct='%1.1f%%'
+)
+axes[1].set_title('Gauchers', fontweight='bold')
+
+plt.show()
