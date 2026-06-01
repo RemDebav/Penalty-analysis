@@ -12,35 +12,27 @@ print(df.head())
 
 # Penalty Shootouts Analysis
 def get_area(zone):
-    if zone == 1 or zone == 4 or zone == 7:
+    if zone in [1, 4, 7]:
         return 1
-    elif zone == 2 or zone == 5 or zone == 8:
+    elif zone in [2, 5, 8]:
         return 2
-    elif zone == 3 or zone == 6 or zone == 9:
+    elif zone in [3, 6, 9]:
         return 3
-    else:
-        return 0
 
 df['Area'] = df['Zone'].apply(get_area)
-print(df.head())
-df_droitier= df[df['Foot'] == 'R'].copy()
-df_gaucher=df[df['Foot'] == 'L'].copy()
-df_hors_cadre = df.copy()
 
-df_hors_cadre = df.copy()
-
-df_hors_cadre.loc[df_hors_cadre['OnTarget'] == 0, 'Area'] = 0
+# Calcul des pourcentages par pied
+df_pct = df.groupby('Foot')['Area'].value_counts(normalize=True).mul(100).rename('Percentage').reset_index()
+#value_counts(normalize=True).mul(100)  transforme les comptes en pourcentages, et barplot à la place de
+#countplot pour afficher ces pourcentages sur l'axe Y.
 
 
-
-# Penalty Shootouts Analysis
-"""
-sns.countplot(x='Foot', hue='Area', data=df)
-plt.xlabel('Foot Type')
-plt.ylabel('Count')
-plt.title('Preferred Shooting Areas for Left and Right-Footed Players')
-plt.legend(title='Area')
-plt.show()"""
+sns.barplot(x='Foot', y='Percentage', hue='Area', data=df_pct)
+plt.xlabel('Pied')
+plt.ylabel('Pourcentage (%)')
+plt.title('Zone préférée selon le pied')
+plt.legend(title='Zone')
+plt.show()
 
 # On améliore en mettant en fréquence
 # 1. Création de la figure avec 1 ligne et 2 colonnes
