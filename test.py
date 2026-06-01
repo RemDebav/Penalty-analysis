@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 # Utilisez un "r" avant les guillemets pour éviter les problèmes de slashs Windows
 df = pd.read_csv(r'c:\Users\remde\Documents\test\WorldCupShootouts.csv')
-df_droitier= df[df['Foot'] == 'R'].copy()
-df_gaucher=df[df['Foot'] == 'L'].copy()
+
+
 
 print(df.head())
 
@@ -18,10 +18,19 @@ def get_area(zone):
         return 2
     elif zone == 3 or zone == 6 or zone == 9:
         return 3
+    else:
+        return 0
 
 df['Area'] = df['Zone'].apply(get_area)
+print(df.head())
 df_droitier= df[df['Foot'] == 'R'].copy()
 df_gaucher=df[df['Foot'] == 'L'].copy()
+df_hors_cadre = df.copy()
+
+df_hors_cadre = df.copy()
+
+df_hors_cadre.loc[df_hors_cadre['OnTarget'] == 0, 'Area'] = 0
+
 
 
 # Penalty Shootouts Analysis
