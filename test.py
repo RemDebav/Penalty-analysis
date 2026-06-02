@@ -12,14 +12,24 @@ print(df.head())
 
 # Penalty Shootouts Analysis
 def get_area(zone):
-    if zone in [1, 4, 7]:
+    if zone == 1 or zone == 4 or zone == 7:
         return 1
-    elif zone in [2, 5, 8]:
+    elif zone == 2 or zone == 5 or zone == 8:
         return 2
-    elif zone in [3, 6, 9]:
+    elif zone == 3 or zone == 6 or zone == 9:
         return 3
+    else:
+        return 0
 
 df['Area'] = df['Zone'].apply(get_area)
+print(df.head())
+df_droitier= df[df['Foot'] == 'R'].copy()
+df_gaucher=df[df['Foot'] == 'L'].copy()
+df_hors_cadre = df.copy()
+
+df_hors_cadre = df.copy()
+
+df_hors_cadre.loc[df_hors_cadre['OnTarget'] == 0, 'Area'] = 0
 
 # Calcul des pourcentages par pied
 df_pct = df.groupby('Foot')['Area'].value_counts(normalize=True).mul(100).rename('Percentage').reset_index()
@@ -33,28 +43,6 @@ plt.ylabel('Pourcentage (%)')
 plt.title('Zone préférée selon le pied')
 plt.legend(title='Zone')
 plt.show()
-
-# On améliore en mettant en fréquence
-# 1. Création de la figure avec 1 ligne et 2 colonnes
-# figsize=(15, 6) permet de donner assez de largeur pour les deux
-fig, axes = plt.subplots(1, 2, figsize=(15, 6))
-
-# 2. Premier graphique (Droitiers) sur l'axe 0 (gauche)
-sns.countplot(x='Foot', hue='Area', data=df_droitier, ax=axes[0])
-axes[0].set_title('Zones préférées : Droitiers')
-axes[0].set_xlabel('Pied (R)')
-axes[0].set_ylabel('Nombre de tirs')
-
-# 3. Deuxième graphique (Gauchers) sur l'axe 1 (droite)
-sns.countplot(x='Foot', hue='Area', data=df_gaucher, ax=axes[1])
-axes[1].set_title('Zones préférées : Gauchers')
-axes[1].set_xlabel('Pied (L)')
-axes[1].set_ylabel('Nombre de tirs')
-
-# Ajuste automatiquement l'espacement pour éviter que les titres se chevauchent
-plt.tight_layout()
-plt.show()
-
 
 fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
@@ -77,5 +65,37 @@ axes[0].pie(
     autopct='%1.1f%%'
 )
 axes[1].set_title('Gauchers', fontweight='bold')
+
+plt.show()
+
+
+# Tirs cadrés uniquement
+df_cadres = df_hors_cadre[df_hors_cadre['OnTarget'] == 1]
+
+# Nombre total de tirs cadrés par zone
+total_zone = df_cadres.groupby('Zone').size()
+
+# Nombre d'arrêts par zone
+saves_zone = df_cadres[df_cadres['Goal'] == 0].groupby('Zone').size()
+
+# Pourcentage d'arrêts
+save_pct = (saves_zone / total_zone * 100).fillna(0)
+
+# S'assurer que les 9 zones apparaissent
+save_pct = save_pct.reindex(range(1, 10), fill_value=0)
+
+plt.figure(figsize=(10,5))
+
+plt.bar(
+    [str(i) for i in range(1,10)],
+    save_pct
+)
+
+plt.xlabel("Zone")
+plt.ylabel("Pourcentage d'arrêts (%)")
+plt.title("Pourcentage d'arrêts du gardien selon la zone")
+
+for i, value in enumerate(save_pct):
+    plt.text(i, value + 0.5, f"{value:.1f}%", ha='center')
 
 plt.show()
