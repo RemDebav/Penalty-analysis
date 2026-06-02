@@ -1,0 +1,95 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score, KFold
+from sklearn.linear_model import LogisticRegression
+
+nom_fichier = "Feuille de calcul sans titre - Feuille 1.csv"
+
+try:
+    # ---------------------------------------------------------
+    # 1. CHARGEMENT ET NETTOYAGE
+    # ---------------------------------------------------------
+    df = pd.read_csv(nom_fichier, sep=',')
+    # On retire les lignes où il manque des infos essentielles
+    df = df.dropna(subset=['Goal', 'Poste', 'Foot', 'Penalty_Number', 'Zone'])
+
+    # ---------------------------------------------------------
+    # 2. INGENIERIE DES CARACTÉRISTIQUES (Feature Engineering)
+    # ---------------------------------------------------------
+    # A. Création d'une variable binaire "Mort Subite" (Pression)
+    # Si c'est le 11e tir ou plus (soit le 6e tireur de l'équipe), c'est la mort subite (1). Sinon 0.
+    df['Mort_Subite'] = (df['Penalty_Number'] >= 11).astype(int)
+
+
+    # B. Agrégation : Transformation des 9 zones en 3 Hauteurs (plus robustes)
+    def map_hauteur(zone):
+        z = int(zone)
+        if z in [7, 8, 9]:
+            return 'Haut'
+        elif z in [4, 5, 6]:
+            return 'Milieu'
+        elif z in [1, 2, 3]:
+            return 'Bas'
+        return 'Inconnu'
+
+
+    df['Hauteur'] = df['Zone'].apply(map_hauteur)
+
+    # C. Encodage : Transformation du texte en chiffres (0 ou 1)
+    # L'algorithme a besoin de variables mathématiques. "A", "M", "D" deviennent des colonnes séparées.
+    # drop_first=True évite la redondance mathématique (si ce n'est pas M ou D, l'algo déduit que c'est A)
+    df_encoded = pd.get_dummies(df, columns=['Poste', 'Foot', 'Hauteur'], drop_first=True)
+
+    # On sélectionne nos variables explicatives (X) et notre cible (y)
+    colonnes_X = ['Mort_Subite'] + [col for col in df_encoded.columns if
+                                    col.startswith(('Poste_', 'Foot_', 'Hauteur_'))]
+    X = df_encoded[colonnes_X]
+    y = df_encoded['Goal']
+
+    # ---------------------------------------------------------
+    # 3. MODÈLE ET VALIDATION (k-Fold Cross-Validation)
+    # ---------------------------------------------------------
+    # Initialisation de la Régression Logistique
+    modele_logistique = LogisticRegression(max_iter=1000)
+
+    # Validation croisée avec k=5 (on coupe le fichier en 5, on entraîne sur 4, on teste sur 1, et on tourne)
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(modele_logistique, X, y, cv=kf, scoring='accuracy')
+
+    print("--- VALIDATION DU MODÈLE (Prédiction) ---")
+    print(f"Précision moyenne du modèle (5-Fold CV) : {scores.mean() * 100:.1f} %")
+    print(f"Détail des 5 tests : {np.round(scores * 100, 1)} %\n")
+
+    # ---------------------------------------------------------
+    # 4. INTERPRÉTABILITÉ (Explication des facteurs)
+    # ---------------------------------------------------------
+    # On entraîne le modèle sur toutes les données pour extraire les coefficients β
+    modele_logistique.fit(X, y)
+    coefficients = modele_logistique.coef_[0]
+
+    # On lie chaque coefficient à son nom de variable
+    importance = pd.DataFrame({'Facteur': colonnes_X, 'Impact (Beta)': coefficients})
+    importance = importance.sort_values(by='Impact (Beta)', ascending=False)
+
+    print("--- INTERPRÉTATION DES FACTEURS (Explication) ---")
+    print("Un coefficient positif augmente les chances de marquer, un négatif les diminue.")
+    print(importance.to_string(index=False))
+
+    # Génération du graphique d'explication
+    plt.figure(figsize=(10, 6))
+    couleurs = ['#2ecc71' if x > 0 else '#e74c3c' for x in importance['Impact (Beta)']]
+    plt.barh(importance['Facteur'], importance['Impact (Beta)'], color=couleurs)
+
+    plt.axvline(0, color='black', linewidth=1)
+    plt.title("Modélisation pour l'explication : Impact de chaque facteur sur le penalty", fontsize=14,
+              fontweight='bold')
+    plt.xlabel(r"Coefficient $\beta$ (Négatif = Risque d'échec, Positif = Chance de but)")
+    plt.gca().invert_yaxis()  # Met le facteur le plus positif en haut
+    plt.tight_layout()
+
+    print("\nAffichage du graphique des coefficients...")
+    plt.show()
+
+except FileNotFoundError:
+    print(f"Erreur : Le fichier '{nom_fichier}' est introuvable.")
